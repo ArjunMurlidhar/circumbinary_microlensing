@@ -1,0 +1,46 @@
+# Conda environment file for run_sep_det pipeline
+# Circumbinary Microlensing Detectability Analysis
+#
+# Create environment with:
+#   conda env create -f environment.yml
+# 
+# Activate with:
+#   conda activate microlens
+#
+# Update environment with:
+#   conda env update -f environment.yml --prune
+
+name: microlens
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python version
+  - python>=3.8,<3.12
+  
+  # Core scientific computing
+  - numpy>=1.21.0,<2.0.0
+  
+  # Plotting and visualization
+  - matplotlib>=3.5.0
+  
+  # Astronomy and FITS file handling
+  - astropy>=5.0.0
+  
+  # Parallel processing (usually included with Python but explicitly listed)
+  - concurrent-log-handler  # Optional: for better logging in parallel jobs
+  
+  # Development and debugging tools (optional)
+  - ipython
+  - jupyter
+  - ipykernel
+  
+  # Pip dependencies (packages not available via conda or better from PyPI)
+  - pip
+  - pip:
+    # VBMicrolensing - gravitational microlensing calculations
+    # This package might need to be installed from source if PyPI version fails
+    - VBBinaryLensing>=3.5.0
+

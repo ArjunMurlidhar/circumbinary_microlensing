@@ -1,0 +1,21 @@
+# Requirements file for run_sep_det pipeline
+# Circumbinary Microlensing Detectability Analysis
+
+# Core scientific computing
+numpy>=1.21.0,<2.0.0
+
+# Plotting and visualization
+matplotlib>=3.5.0
+
+# Astronomy and FITS file handling
+astropy>=5.0.0
+
+# Microlensing calculations
+# VBMicrolensing can be installed from PyPI or built from source
+# PyPI: pip install VBBinaryLensing
+# Source: https://github.com/valboz/VBBinaryLensing
+VBBinaryLensing>=3.5.0
+
+# Optional but recommended for better performance
+# scipy>=1.7.0  # Sometimes required by astropy or matplotlib
+

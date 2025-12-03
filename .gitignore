@@ -49,3 +49,6 @@ gulls_stuff/
 /Multiple_lc_*
 Planet_grid_run_files/
 triplelens-1.0.7/
+/contour_analysis_results
+/magnification_maps
+planet_map_test.fits
