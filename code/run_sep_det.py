@@ -3,6 +3,7 @@ from calc_det_sep import region_of_dev, calc_detectability, refine_det
 import argparse
 import csv
 import os
+import ast
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -40,13 +41,28 @@ if __name__ == "__main__":
                 "psi": row_f["psi"],
                 "rho": row_f["rho"],
             }
-            bin_params = [params["s2"], params["q2"], params["rho"]]
+            bin_params = [params["s2"], params["q2"], params["rho"], row_f["cad"], row_f["tE"]]
             if len(fixed_bin_params) == 0 or bin_params != fixed_bin_params:
                 fixed_bin_params = bin_params
                 fixed_bin_index = sys_ind
                 #Run region of deviation
-                bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot)
+                #if bin_map_contours.txt and planet_map_contours.txt exist, get bin_u0 and planet_corners from them
+                if os.path.exists(os.path.join(output_dir, sys, "bin_map_contours.txt")) and os.path.exists(os.path.join(output_dir, sys, "planet_map_contours.txt")):
+                    with open(os.path.join(output_dir, sys, "bin_map_contours.txt"), 'r') as f:
+                        for line in f:
+                            if line.startswith("# Bin_u0:"):
+                                bin_u0 = float(line.split(":")[1].strip())   
+                    with open(os.path.join(output_dir, sys, "planet_map_contours.txt"), 'r') as f:
+                        for line in f:
+                            if line.startswith("# Planet rectangle corners:"):
+                                planet_corners = line.split(":")[1].strip()
+                    planet_corners = ast.literal_eval(planet_corners)
+                    
+                else:
+                    bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot)
                 if planet_corners is None:
+                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    sys_ind += 1
                     continue
                 res = row_f["cad"]/(row_f["tE"]*24*60)
 
@@ -69,8 +85,8 @@ if __name__ == "__main__":
                 np.savetxt(os.path.join(output_dir, sys, "det_traj_bin.txt"), np.array([bin_u, np.degrees(bin_alpha)]).T, fmt = '%.4f %.2f', header='u0  alpha(deg)')
                         
                 #refine detectability
-                n_det_ref = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"])
-                n_det_bin = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], type = 'bin')
+                n_det_ref = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], num_cores=num_cores)
+                n_det_bin = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], type = 'bin', num_cores=num_cores)
                 if n_alpha > 360:
                     n_det_bin = n_det_bin*n_alpha/360
 
@@ -84,13 +100,24 @@ if __name__ == "__main__":
 
 
             elif bin_params == fixed_bin_params:
-                #Run region of deviation for planet only
-                bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot, skip_binary=True)
+                #if planet_map_contours.txt exist, get planet_corners from it
+                if os.path.exists(os.path.join(output_dir, sys, "planet_map_contours.txt")):
+                    with open(os.path.join(output_dir, sys, "planet_map_contours.txt"), 'r') as f:
+                        for line in f:
+                            if line.startswith("# Planet rectangle corners:"):
+                                planet_corners = line.split(":")[1].strip()
+                    #convert planet_corners to a list of tuples
+                    planet_corners = ast.literal_eval(planet_corners)
+                else:
+                    bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot, skip_binary=True)
                 if planet_corners is None:
+                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    sys_ind += 1
                     continue
-                #create links to outdir/run_name_fixed_bin_index/bin_map_contours.txt, outdir/run_name_fixed_bin_index/bin_map.fits and outdir/run_name_fixed_bin_index/det_traj_bin.txt
-                os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map_contours.txt"), os.path.join(output_dir, sys, "bin_map_contours.txt"))
-                os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map.fits"), os.path.join(output_dir, sys, "bin_map.fits"))
+                if not os.path.exists(os.path.join(output_dir, sys, "bin_map_contours.txt")):
+                    #create links to outdir/run_name_fixed_bin_index/bin_map_contours.txt, outdir/run_name_fixed_bin_index/bin_map.fits and outdir/run_name_fixed_bin_index/det_traj_bin.txt
+                    os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map_contours.txt"), os.path.join(output_dir, sys, "bin_map_contours.txt"))
+                    os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map.fits"), os.path.join(output_dir, sys, "bin_map.fits"))
 
                 #Get bin_u0 from bin_map_contours.txt
                 with open(os.path.join(output_dir, sys, "bin_map_contours.txt"), 'r') as f:
@@ -105,8 +132,11 @@ if __name__ == "__main__":
 
                 #save a txt file with all trajectories inside bin_u0
                 bin_u = np.arange(-bin_u0, bin_u0, res)
-                bin_alpha = np.linspace(0.0, np.pi, n_alpha, endpoint=False)
                 det_traj_bin = []
+                if n_alpha > 360:
+                    bin_alpha = np.linspace(0.0, np.pi, 360, endpoint=False)
+                else:
+                    bin_alpha = np.linspace(0.0, np.pi, n_alpha, endpoint=False)
                 for u in bin_u:
                     for alpha in bin_alpha:
                         det_traj_bin.append((u, alpha))
@@ -116,8 +146,10 @@ if __name__ == "__main__":
                 np.savetxt(os.path.join(output_dir, sys, "det_traj_bin.txt"), np.array([bin_u, np.degrees(bin_alpha)]).T, fmt = '%.4f %.2f', header='u0  alpha(deg)')
 
                 #refine detectability
-                n_det_ref = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"])
-                n_det_bin = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], type = 'bin')
+                n_det_ref = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], num_cores=num_cores)
+                n_det_bin = refine_det(output_dir, sys, threshold=row_f["contour_threshold"], n_pot=row_f["n_pot"], type = 'bin', num_cores=num_cores)
+                if n_alpha > 360:
+                    n_det_bin = n_det_bin*n_alpha/360
 
                 #calculate total number of trajectories
                 total_traj = n_u*n_alpha
