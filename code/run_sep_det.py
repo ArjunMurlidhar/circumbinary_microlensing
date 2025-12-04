@@ -47,6 +47,8 @@ if __name__ == "__main__":
                 #Run region of deviation
                 bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot)
                 if planet_corners is None:
+                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    sys_ind += 1
                     continue
                 res = row_f["cad"]/(row_f["tE"]*24*60)
 
@@ -87,6 +89,8 @@ if __name__ == "__main__":
                 #Run region of deviation for planet only
                 bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot, skip_binary=True)
                 if planet_corners is None:
+                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    sys_ind += 1
                     continue
                 #create links to outdir/run_name_fixed_bin_index/bin_map_contours.txt, outdir/run_name_fixed_bin_index/bin_map.fits and outdir/run_name_fixed_bin_index/det_traj_bin.txt
                 os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map_contours.txt"), os.path.join(output_dir, sys, "bin_map_contours.txt"))
