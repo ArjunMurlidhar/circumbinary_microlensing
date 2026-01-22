@@ -3,6 +3,10 @@
 # Helper script to check status of all jobs for a given run
 # Usage: ./check_job_status.sh <run_name>
 
+# Fixed paths
+SCRATCH_BASE="/fs/scratch/PAS3230"
+FINAL_OUTPUT_DIR="/users/PAS3230/arjunm/circumbinary_microlensing/oom_detectability"
+
 if [ -z "$1" ]; then
     echo "Usage: $0 <run_name>"
     echo ""
@@ -12,10 +16,8 @@ fi
 
 RUN_NAME="$1"
 
-# Get the directory of this script
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
-SLURM_DIR="$PROJECT_DIR/slurm_scripts"
+# Scratch log directory
+SCRATCH_LOG_DIR="$SCRATCH_BASE/$RUN_NAME/logs"
 
 echo "=========================================="
 echo "Job Status for: $RUN_NAME"
@@ -32,9 +34,9 @@ echo "Log file summary:"
 echo "----------------------------------------"
 echo ""
 
-# Check log files
-LOG_FILES=("$SLURM_DIR/${RUN_NAME}_job"*.log)
-ERR_FILES=("$SLURM_DIR/${RUN_NAME}_job"*.err)
+# Check log files in scratch
+LOG_FILES=("$SCRATCH_LOG_DIR/${RUN_NAME}_job"*.log)
+ERR_FILES=("$SCRATCH_LOG_DIR/${RUN_NAME}_job"*.err)
 
 if [ -f "${LOG_FILES[0]}" ]; then
     for log in "${LOG_FILES[@]}"; do
@@ -71,6 +73,8 @@ if [ -f "${LOG_FILES[0]}" ]; then
     done
 else
     echo "No log files found for run: $RUN_NAME"
+    echo "Looking in: $SCRATCH_LOG_DIR"
+    echo ""
     echo "Have you submitted the jobs yet?"
 fi
 
@@ -94,8 +98,27 @@ fi
 
 echo ""
 echo "=========================================="
-echo "Detailed logs available at:"
-echo "  $SLURM_DIR/${RUN_NAME}_job*.log"
-echo "  $SLURM_DIR/${RUN_NAME}_job*.err"
+echo "Output status:"
 echo "=========================================="
+echo ""
 
+# Check scratch outputs
+SCRATCH_OUTPUT_DIR="$SCRATCH_BASE/$RUN_NAME/outputs"
+if [ -d "$SCRATCH_OUTPUT_DIR" ]; then
+    scratch_count=$(find "$SCRATCH_OUTPUT_DIR" -maxdepth 1 -type d -name "${RUN_NAME}_job*" 2>/dev/null | wc -l | tr -d ' ')
+    echo "Outputs still in scratch: $scratch_count directories"
+fi
+
+# Check final outputs
+if [ -d "$FINAL_OUTPUT_DIR" ]; then
+    final_count=$(find "$FINAL_OUTPUT_DIR" -maxdepth 1 -type d -name "${RUN_NAME}_job*" 2>/dev/null | wc -l | tr -d ' ')
+    echo "Outputs moved to final:   $final_count directories"
+fi
+
+echo ""
+echo "=========================================="
+echo "Paths:"
+echo "  Logs:    $SCRATCH_LOG_DIR"
+echo "  Scratch: $SCRATCH_OUTPUT_DIR"
+echo "  Final:   $FINAL_OUTPUT_DIR"
+echo "=========================================="

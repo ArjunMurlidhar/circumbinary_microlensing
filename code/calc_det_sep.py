@@ -202,7 +202,9 @@ def region_of_dev(params, outdir, sys_ind, tE = 10, cad = 12, bin_box=1.0, plane
         f.write(f"# Contours for {sys_ind}\n")
         f.write(f"# Planet map contours\n")
         f.write(f"# Parameters: s2={s2}, q2={q2}, s3={s3}, q3={q3}, psi={psi}, rho={rho}, splanet={splanet}, qplanet={qplanet}, psi_planet={psi_planet}\n")
-        f.write(f"# Planet rectangle corners: {planet_corners}\n")
+        # Convert numpy values to regular Python floats for ast.literal_eval compatibility
+        planet_corners_float = [(float(x), float(y)) for x, y in planet_corners]
+        f.write(f"# Planet rectangle corners: {planet_corners_float}\n")
         f.write("# Segment_ID, X, Y\n")
         for i, segment in enumerate(cp.allsegs[0]):
             for point in segment:

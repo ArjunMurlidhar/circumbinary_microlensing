@@ -12,6 +12,10 @@ fi
 
 RUN_NAME="$1"
 
+# Fixed paths
+SCRATCH_BASE="/fs/scratch/PAS3230"
+SCRATCH_RUN_DIR="$SCRATCH_BASE/$RUN_NAME"
+
 echo "=========================================="
 echo "Cancelling jobs for: $RUN_NAME"
 echo "=========================================="
@@ -47,10 +51,12 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     done
     echo ""
     echo "All jobs cancelled!"
+    echo ""
+    echo "Note: Partial outputs may remain in scratch:"
+    echo "  $SCRATCH_RUN_DIR/outputs/"
 else
     echo ""
     echo "Cancelled. No jobs were terminated."
 fi
 
 echo "=========================================="
-
