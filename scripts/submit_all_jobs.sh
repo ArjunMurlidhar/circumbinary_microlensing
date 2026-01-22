@@ -3,6 +3,9 @@
 # Helper script to submit all SLURM jobs for a given run
 # Usage: ./submit_all_jobs.sh <run_name>
 
+# Fixed paths
+SCRATCH_BASE="/fs/scratch/PAS3230"
+
 if [ -z "$1" ]; then
     echo "Usage: $0 <run_name>"
     echo ""
@@ -17,6 +20,9 @@ RUN_NAME="$1"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 SLURM_DIR="$PROJECT_DIR/slurm_scripts"
+
+# Scratch log directory
+SCRATCH_LOG_DIR="$SCRATCH_BASE/$RUN_NAME/logs"
 
 # Check if SLURM directory exists
 if [ ! -d "$SLURM_DIR" ]; then
@@ -62,8 +68,10 @@ echo ""
 echo "Cancel all jobs:"
 echo "  scancel $(IFS=' '; echo "${JOB_IDS[*]}")"
 echo ""
-echo "Check logs in:"
-echo "  $SLURM_DIR/${RUN_NAME}_job*.log"
-echo "  $SLURM_DIR/${RUN_NAME}_job*.err"
+echo "Check logs in scratch:"
+echo "  $SCRATCH_LOG_DIR/${RUN_NAME}_job*.log"
+echo "  $SCRATCH_LOG_DIR/${RUN_NAME}_job*.err"
+echo ""
+echo "Check job status:"
+echo "  ./check_job_status.sh $RUN_NAME"
 echo "=========================================="
-

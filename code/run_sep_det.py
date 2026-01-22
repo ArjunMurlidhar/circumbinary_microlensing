@@ -115,9 +115,9 @@ if __name__ == "__main__":
                     sys_ind += 1
                     continue
                 if not os.path.exists(os.path.join(output_dir, sys, "bin_map_contours.txt")):
-                    #create links to outdir/run_name_fixed_bin_index/bin_map_contours.txt, outdir/run_name_fixed_bin_index/bin_map.fits and outdir/run_name_fixed_bin_index/det_traj_bin.txt
-                    os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map_contours.txt"), os.path.join(output_dir, sys, "bin_map_contours.txt"))
-                    os.symlink(os.path.join(output_dir, run_name + "_" + str(fixed_bin_index), "bin_map.fits"), os.path.join(output_dir, sys, "bin_map.fits"))
+                    #create relative links to ../run_name_fixed_bin_index/bin_map_contours.txt and ../run_name_fixed_bin_index/bin_map.fits
+                    os.symlink(os.path.join("..", run_name + "_" + str(fixed_bin_index), "bin_map_contours.txt"), os.path.join(output_dir, sys, "bin_map_contours.txt"))
+                    os.symlink(os.path.join("..", run_name + "_" + str(fixed_bin_index), "bin_map.fits"), os.path.join(output_dir, sys, "bin_map.fits"))
 
                 #Get bin_u0 from bin_map_contours.txt
                 with open(os.path.join(output_dir, sys, "bin_map_contours.txt"), 'r') as f:
