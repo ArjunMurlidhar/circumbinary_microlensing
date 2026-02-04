@@ -9,10 +9,10 @@ SCRATCH_BASE="/fs/scratch/PAS3230"
 FINAL_OUTPUT_DIR="/users/PAS3230/arjunm/circumbinary_microlensing/oom_detectability"
 
 # Default values
-NUM_CORES=1
+NUM_CORES=5
 MAG_PLOT_FLAG=""
 SLURM_TIME="24:00:00"
-SLURM_MEM="16G"
+SLURM_MEM="32G"
 SLURM_PARTITION="normal"
 
 # Parse command line arguments
@@ -67,10 +67,10 @@ if [ -z "$INPUT_FILE" ] || [ -z "$NUM_JOBS" ] || [ -z "$RUN_NAME" ]; then
     echo "  --run_name          Global run name"
     echo ""
     echo "Optional arguments:"
-    echo "  --num_cores         Number of cores per job (default: 1)"
+    echo "  --num_cores         Number of cores per job (default: 5)"
     echo "  --mag_plot          Flag to plot magnification maps"
     echo "  --slurm_time        SLURM time limit (default: 24:00:00)"
-    echo "  --slurm_mem         SLURM memory per job (default: 16G)"
+    echo "  --slurm_mem         SLURM memory per job (default: 32G)"
     echo "  --slurm_partition   SLURM partition (default: normal)"
     echo ""
     echo "Fixed paths:"
@@ -211,7 +211,7 @@ echo ""
 
 set -euo pipefail
 
-module load miniconda3
+module load miniconda3/24.1.2-py310
 conda activate microlens
 
 # Scratch and final output directories
@@ -249,23 +249,74 @@ echo ""
 echo "Python script completed successfully."
 echo ""
 
-# Move outputs from scratch to final destination
+# Move outputs from scratch to final destination using rsync for reliability
 echo "Moving outputs to final destination..."
 echo "  From: \$SCRATCH_OUTPUT_DIR"
 echo "  To:   \$FINAL_OUTPUT_DIR"
+echo ""
 
-# Move all job-related directories and files
-for item in \$SCRATCH_OUTPUT_DIR/${JOB_NAME}*; do
-    if [ -e "\$item" ]; then
-        mv "\$item" "\$FINAL_OUTPUT_DIR/"
-        echo "  Moved: \$(basename \$item)"
+# IMPORTANT: Move results file FIRST - this serves as the completion indicator
+# If interrupted after this point, submit_all_jobs.sh will see results exist and skip re-submission
+RESULTS_FILE="\$SCRATCH_OUTPUT_DIR/${JOB_NAME}_results.csv"
+if [ -f "\$RESULTS_FILE" ]; then
+    echo "  [1/2] Moving results file first (completion indicator)..."
+    rsync -av "\$RESULTS_FILE" "\$FINAL_OUTPUT_DIR/"
+    RSYNC_EXIT=\$?
+    if [ \$RSYNC_EXIT -eq 0 ]; then
+        rm -f "\$RESULTS_FILE"
+        echo "        Results file transferred successfully"
+    else
+        echo "ERROR: Failed to transfer results file (rsync exit code: \$RSYNC_EXIT)"
+        exit 1
+    fi
+else
+    echo "ERROR: Results file not found: \$RESULTS_FILE"
+    echo "       Python script may not have completed successfully."
+    exit 1
+fi
+
+# Now sync all job-related directories
+# Using rsync handles: cross-filesystem moves, existing directories, and can resume if interrupted
+echo ""
+echo "  [2/2] Syncing output directories..."
+SYNC_FAILED=0
+for item in \$SCRATCH_OUTPUT_DIR/${JOB_NAME}_*; do
+    if [ -d "\$item" ]; then
+        BASENAME=\$(basename "\$item")
+        echo "        Syncing: \$BASENAME"
+        
+        # rsync with trailing slash on source copies contents into destination
+        # --update skips files newer on destination (safety measure)
+        # Using -a (archive mode) preserves permissions, timestamps, etc.
+        rsync -av --update "\$item/" "\$FINAL_OUTPUT_DIR/\$BASENAME/"
+        RSYNC_EXIT=\$?
+        
+        if [ \$RSYNC_EXIT -eq 0 ]; then
+            # Only remove source after successful sync
+            rm -rf "\$item"
+            echo "        Cleaned up source: \$BASENAME"
+        else
+            echo "WARNING: Failed to sync \$BASENAME (rsync exit code: \$RSYNC_EXIT)"
+            echo "         Source preserved at: \$item"
+            SYNC_FAILED=1
+        fi
     fi
 done
+
+if [ \$SYNC_FAILED -eq 1 ]; then
+    echo ""
+    echo "WARNING: Some directories failed to sync. Check logs and scratch for details."
+    echo "         Results file was transferred - job will not be re-submitted."
+fi
 
 echo ""
 echo "=========================================="
 echo "Job completed: \$(date)"
-echo "Exit code: 0"
+if [ \$SYNC_FAILED -eq 1 ]; then
+    echo "Exit code: 0 (with sync warnings)"
+else
+    echo "Exit code: 0"
+fi
 echo "=========================================="
 
 exit 0

@@ -20,6 +20,19 @@ if __name__ == "__main__":
     num_cores = args.num_cores
     mag_plot = args.mag_plot
 
+    # Results file path
+    results_file = os.path.join(output_dir, run_name + "_results.csv")
+    results_header = ["sys_ind", "n_det", "n_det_ref", "n_det_bin", "total_traj", "bin_det_rate", "total_det_rate"]
+    
+    # Helper function to append a single result row to the CSV file
+    def append_result(result_row):
+        """Append a single result row to the results CSV file, creating header if needed."""
+        file_exists = os.path.exists(results_file)
+        with open(results_file, 'a') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(results_header)
+            writer.writerow(result_row)
     
     # Input file columns: s2, q2, s3, q3, psi, rho, tE, cad, bin_box, planet_box, contour_threshold, alpha_density, n_pot
     # Read input file and store each row as a dictionary with keys as the column names
@@ -28,10 +41,17 @@ if __name__ == "__main__":
         fixed_bin_params = []
         fixed_bin_index = 0
         sys_ind = 0
-        results = []
         for row in reader:
             print("Running system ", run_name, sys_ind)
             sys = run_name + "_" + str(sys_ind)
+            
+            # Check if this system has already been completed (det_traj_bin.txt is the last file created)
+            det_traj_bin_path = os.path.join(output_dir, sys, "det_traj_bin.txt")
+            if os.path.exists(det_traj_bin_path):
+                print(f"  Skipping system {sys_ind} - already completed (det_traj_bin.txt exists)")
+                sys_ind += 1
+                continue
+            
             row_f = {k: float(v) for k, v in row.items()}
             params = {
                 "s2": row_f["s2"],
@@ -61,7 +81,7 @@ if __name__ == "__main__":
                 else:
                     bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot)
                 if planet_corners is None:
-                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    append_result([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
                     sys_ind += 1
                     continue
                 res = row_f["cad"]/(row_f["tE"]*24*60)
@@ -96,7 +116,7 @@ if __name__ == "__main__":
                 bin_det_rate = n_det_ref/n_det_bin
 
                 total_det_rate = n_det_ref/(total_traj*3.0/bin_u0)
-                results.append([sys_ind, n_det, n_det_ref, n_det_bin, total_traj, bin_det_rate, total_det_rate])
+                append_result([sys_ind, n_det, n_det_ref, n_det_bin, total_traj, bin_det_rate, total_det_rate])
 
 
             elif bin_params == fixed_bin_params:
@@ -111,7 +131,7 @@ if __name__ == "__main__":
                 else:
                     bin_u0, planet_corners = region_of_dev(params, output_dir, sys, row_f["tE"], row_f["cad"], row_f["bin_box"], row_f["planet_box"], num_cores, row_f["contour_threshold"], mag_plot, skip_binary=True)
                 if planet_corners is None:
-                    results.append([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
+                    append_result([sys_ind, 0, 0, 'NA', 'NA', 0, 0])
                     sys_ind += 1
                     continue
                 if not os.path.exists(os.path.join(output_dir, sys, "bin_map_contours.txt")):
@@ -158,15 +178,11 @@ if __name__ == "__main__":
 
                 total_det_rate = n_det_ref/(total_traj*3.0/bin_u0)
 
-                results.append([sys_ind, n_det, n_det_ref, n_det_bin, total_traj, bin_det_rate, total_det_rate])
+                append_result([sys_ind, n_det, n_det_ref, n_det_bin, total_traj, bin_det_rate, total_det_rate])
 
             sys_ind += 1
     
-    #save results to a csv file
-    with open(os.path.join(output_dir, run_name + "_results.csv"), 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(["sys_ind", "n_det", "n_det_ref", "n_det_bin", "total_traj", "bin_det_rate", "total_det_rate"])
-        writer.writerows(results)
+    print(f"Results saved to: {results_file}")
     
 
 
